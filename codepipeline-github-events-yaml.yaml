@@ -17,6 +17,10 @@ Parameters:
     Description: CodeDeploy application name
     Type: String
     Default: DemoApplication
+  CodePipelineName:
+    Description: The name of CodePipeline
+    Type: String
+    Default: "dev-sagemaker"
   CodePipelineAPPrefix:
     Description: directory for AP on AWS S3
     Type: String
@@ -28,7 +32,7 @@ Parameters:
   CfnApStack:
     Description: Lambda cfn stack
     Type: String
-    Default: 'dev-314159-sagemaker'
+    Default: "dev-314159-sagemaker"
   ProjectName:
     Description: CodeBuild project name
     Type: String
@@ -95,10 +99,8 @@ Resources:
   AppPipeline:
     Type: 'AWS::CodePipeline::Pipeline'
     Properties:
-      Name: "github-events-pipeline"
-      RoleArn: !GetAtt 
-        - CodePipelineServiceRole
-        - Arn
+      Name: !Sub "${CodePipelineName}"
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
       ArtifactStore:
         Type: S3
         Location: !Ref CodePipelineArtifactStoreBucket
