@@ -17,6 +17,18 @@ Parameters:
     Description: CodeDeploy application name
     Type: String
     Default: DemoApplication
+  CodePipelineAPPrefix:
+    Description: directory for AP on AWS S3
+    Type: String
+    Default: "dev-314159-source"
+  CodeBuildAPPrefix:
+    Description: CodeBuild directory for AP on AWS s3
+    Type: String
+    Default: "dev-314159-codebuild"
+  CfnApStack:
+    Description: Lambda cfn stack
+    Type: String
+    Default: 'dev-314159-sagemaker'
   ProjectName:
     Description: CodeBuild project name
     Type: String
@@ -30,7 +42,7 @@ Resources:
   CodePipelineArtifactStoreBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
-      BucketName: 'dev01-codepipeline'
+      BucketName: 'dev-codepipeline'
   CodePipelineArtifactStoreBucketPolicy:
     Type: 'AWS::S3::BucketPolicy'
     Properties:
@@ -83,7 +95,7 @@ Resources:
   AppPipeline:
     Type: 'AWS::CodePipeline::Pipeline'
     Properties:
-      Name: github-events-pipeline
+      Name: "github-events-pipeline"
       RoleArn: !GetAtt 
         - CodePipelineServiceRole
         - Arn
@@ -100,7 +112,7 @@ Resources:
                 Version: 1
                 Provider: GitHub
               OutputArtifacts:
-                - Name: dev-314159-source
+                - Name: !Sub "${CodePipelineAPPrefix}"
               Configuration:
                 Owner: !Ref GitHubOwner
                 Repo: !Ref RepositoryName
@@ -112,7 +124,7 @@ Resources:
           Actions:
             - Name: GitTagDetect
               InputArtifacts:
-                - Name: dev-314159-source
+                - Name: !Sub "${CodePipelineAPPrefix}"
               ActionTypeId:
                 Category: Build
                 Owner: AWS
@@ -121,7 +133,7 @@ Resources:
               Configuration:
                 ProjectName: !Ref ProjectName
               OutputArtifacts:
-                - Name: dev-314159-codebuild
+                - Name: !Sub "${CodeBuildAPPrefix}"
               RunOrder: 1
         - Name: Deploy
           Actions:
@@ -132,13 +144,13 @@ Resources:
                 Provider: CloudFormation
                 Version: 1
               InputArtifacts:
-                - Name: dev-314159-codebuild
+                - Name: !Sub "${CodeBuildAPPrefix}"
               Configuration:
                 ActionMode: CHANGE_SET_REPLACE
                 Capabilities: CAPABILITY_IAM
                 ChangeSetName: dev-314159-changeset
                 RoleArn: !GetAtt CodePipelineServiceRole.Arn
-                StackName: dev-314159-sagemaker
+                StackName: !Sub "${CfnApStack}"
                 TemplatePath: "BuildArtifact::outputtemplate.yml"
             - Name: ExecuteChangeSet
               ActionTypeId:
@@ -147,11 +159,11 @@ Resources:
                 Provider: CloudFormation
                 Version: 1
               InputArtifacts:
-                - Name: dev-314159-codebuild
+                - Name: !Sub "${CodeBuildAPPrefix}"
               Configuration:
                 ActionMode: CHANGE_SET_EXECUTE
-                ChangeSetName: dev-314159-changeset
-                StackName: dev-314159-sagemaker
+                ChangeSetName: 'dev-314159-changeset'
+                StackName: !Sub "${CfnApStack}"
   AppCodeBuild:
     Type: "AWS::CodeBuild::Project"
     Metadata:
@@ -247,4 +259,29 @@ Resources:
             Principal:
               Service:
                 - codebuild.amazonaws.com
-        Version: '2012-10-17'
+      Policies:
+        - PolicyName: !Sub 'DevCodebuild${ApplicationName}'
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+            - Effect: Allow
+              Action:
+                - 'logs:CreateLogGroup'
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource:
+                - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
+            - Effect: Allow
+              Action:
+                - 's3:GetObject'
+                - 's3:GetObjectVersion'
+                - 's3:PutObject'
+              Resource:
+                - !Join ['', ['arn:aws:s3:::', !Ref CodePipelineArtifactStoreBucket, '/*']]
+Outputs:
+  AppPipelineName:
+    Description: The name of the CodePipeline
+    Value: !Ref AppPipeline
+  AppPipelineArtifactStore:
+    Description: The ARN of the CodePipeline
+    Value: !Join ['', [!Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:', !Ref AppPipeline]]

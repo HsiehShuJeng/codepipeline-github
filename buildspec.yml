@@ -7,8 +7,8 @@ phases:
     build:
         commands:
             - npm install time
-            - export BUCKET=lambda-deployment-artifacts-630778274080
-            - export PREFIX=codebuild
+            - export BUCKET=dev-codepipeline
+            - export PREFIX=dev-314159-cfn
             - aws cloudformation package --template-file template.yml --s3-bucket $BUCKET --s3--prefix $PREFIX --output-template-file outputtemplate.yml
 artifacts:
     type: zip
