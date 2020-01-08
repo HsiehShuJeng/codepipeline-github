@@ -42,7 +42,7 @@ Resources:
   CodePipelineArtifactStoreBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
-      BucketName: 'dev-codepipeline'
+      BucketName: 'devscott-codepipeline'
   CodePipelineArtifactStoreBucketPolicy:
     Type: 'AWS::S3::BucketPolicy'
     Properties:
