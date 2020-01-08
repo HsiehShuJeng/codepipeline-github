@@ -287,3 +287,6 @@ Outputs:
   AppPipelineArtifactStore:
     Description: The ARN of the CodePipeline
     Value: !Join ['', [!Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:', !Ref AppPipeline]]
+  CodePipelineAPPrefix:
+    Description: The name of input artifact
+    Value: !Sub "${CodePipelineAPPrefix}"
