@@ -7,7 +7,7 @@ Resources:
     Properties:
       Handler: index.handler
       Runtime: nodejs10.x
-      CodeUri: aws/lambda/
+      CodeUri: aws/lambda
       Events:
         MyTimeApi:
           Type: Api

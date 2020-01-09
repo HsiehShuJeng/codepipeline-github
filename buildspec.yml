@@ -7,9 +7,12 @@ phases:
     build:
         commands:
             - npm install time
-            - export BUCKET=devscott-codepipeline
-            - export PREFIX=dev-314159-cfn
-            - aws cloudformation package --template-file template.yml --s3-bucket $BUCKET --s3-prefix $PREFIX --output-template-file outputtemplate.yml
+            - export BUCKET="devscott-codepipeline"
+            - export S3_PREFIX="dev-314159-cfn"
+            - >
+                aws cloudformation package --template-file template.yml
+                    --s3-bucket $BUCKET --s3-prefix $PREFIX --kms-key-id $CODEBUILD_KMS_KEY_ID
+                    --output-template-file outputtemplate.yml
 artifacts:
     type: zip
     files:
