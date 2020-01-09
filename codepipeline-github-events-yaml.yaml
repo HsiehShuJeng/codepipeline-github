@@ -205,6 +205,7 @@ Resources:
             Principal:
               Service:
                 - codepipeline.amazonaws.com
+                - cloudformation.amazonaws.com
             Action: 'sts:AssumeRole'
       Path: /
       Policies:
@@ -294,3 +295,6 @@ Outputs:
   CodePipelineAPPrefix:
     Description: The name of input artifact
     Value: !Sub "${CodePipelineAPPrefix}"
+  CodeBuildAPPrefix:
+    Description: THe name of artifact name for CodeBuild
+    Value: !Sub "${CodeBuildAPPrefix}"
