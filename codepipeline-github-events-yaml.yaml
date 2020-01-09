@@ -234,6 +234,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - 'iam:PassRole'
+                  - 'iam:CreateRole'
                 Resource: '*'
               - Effect: Allow
                 Action:
