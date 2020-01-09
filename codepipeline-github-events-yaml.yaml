@@ -309,5 +309,5 @@ Outputs:
     Description: The name of input artifact
     Value: !Sub "${CodePipelineAPPrefix}"
   CodeBuildAPPrefix:
-    Description: THe name of artifact name for CodeBuild
+    Description: The name of artifact name for CodeBuild
     Value: !Sub "${CodeBuildAPPrefix}"

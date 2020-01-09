@@ -6,7 +6,7 @@ phases:
             nodejs: 10
     build:
         commands:
-            - npm install time
+            - npm install --prefix ./aws/lambda time
             - export BUCKET="devscott-codepipeline"
             - export S3_PREFIX="dev-sagemaker/CfnPackage"
             - >
