@@ -8,7 +8,7 @@ phases:
         commands:
             - npm install time
             - export BUCKET="devscott-codepipeline"
-            - export S3_PREFIX="dev-sagemaker/dev-codebuild"
+            - export S3_PREFIX="dev-sagemaker/DevCodeBuild"
             - >
                 aws cloudformation package --template-file template.yml \
                     --s3-bucket $BUCKET --s3-prefix $S3_PREFIX --kms-key-id $CODEBUILD_KMS_KEY_ID \

@@ -24,15 +24,15 @@ Parameters:
   CodePipelineAPPrefix:
     Description: directory for AP on AWS S3
     Type: String
-    Default: "dev-314159-source"
+    Default: 'DevSource'
   CodeBuildAPPrefix:
     Description: CodeBuild directory for AP on AWS s3
     Type: String
-    Default: "dev-codebuild"
+    Default: 'DevCodeBuild'
   CfnApStack:
     Description: Lambda cfn stack
     Type: String
-    Default: "dev-314159-sagemaker"
+    Default: 'dev-314159-sagemaker'
   ProjectName:
     Description: CodeBuild project name
     Type: String
@@ -178,7 +178,7 @@ Resources:
               Configuration:
                 ActionMode: CHANGE_SET_REPLACE
                 Capabilities: CAPABILITY_IAM
-                ChangeSetName: dev-314159-changeset
+                ChangeSetName: 'dev-314159-changeset'
                 RoleArn: !GetAtt CodePipelineServiceRole.Arn
                 StackName: !Sub "${CfnApStack}"
                 TemplatePath: !Join ['', [!Sub '${CodeBuildAPPrefix}', '::outputtemplate.yml']]
