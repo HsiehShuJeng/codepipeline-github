@@ -278,6 +278,7 @@ Resources:
                 - 's3:GetObject'
                 - 's3:GetObjectVersion'
                 - 's3:PutObject'
+                - 's3:PutObjectAcl'
               Resource:
                 - !Join ['', ['arn:aws:s3:::', !Ref CodePipelineArtifactStoreBucket, '/*']]
 Outputs:
@@ -287,6 +288,9 @@ Outputs:
   AppPipelineArtifactStore:
     Description: The ARN of the CodePipeline
     Value: !Join ['', [!Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:', !Ref AppPipeline]]
+  CodePipelineArtifactStoreBucket:
+    Description: S3 bucket where artificats are placed
+    Value: !Ref CodePipelineArtifactStoreBucket
   CodePipelineAPPrefix:
     Description: The name of input artifact
     Value: !Sub "${CodePipelineAPPrefix}"
