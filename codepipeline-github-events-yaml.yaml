@@ -137,7 +137,7 @@ Resources:
         SecretToken: !Ref GitHubOAuthToken
       Filters:
         - JsonPath: $.ref
-          MatchEquals: 'refs/heads/{BranchName}'
+          MatchEquals: !Sub 'refs/heads/${BranchName}'
       TargetPipeline: !Ref ApPipeline
       TargetAction: SourceAction
       Name: ApPipelineWebhook
