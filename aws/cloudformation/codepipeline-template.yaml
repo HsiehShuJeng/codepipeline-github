@@ -126,7 +126,7 @@ Resources:
         Type: LINUX_CONTAINER
         ComputeType: !Ref ComputeType
         Image: aws/codebuild/standard:2.0
-      QueuedTimeoutInMinutes: 540 # 15 mins
+      QueuedTimeoutInMinutes: 15 # mins
       Source:
         BuildSpec: buildspec.yml
         Type: CODEPIPELINE
@@ -220,13 +220,11 @@ Resources:
                 Version: 1
               Configuration:
                   NotificationArn: !Ref LambdaSnsTopic
-                  ExternalEntityLink: !Join 
-                                          - '' 
-                                          - - !Sub 'https://console.aws.amazon.com/cloudformation/home?region=${AWS::Region}#'
-                                            - '/stacks/stackinfo?filteringText='
-                                            - '&filteringStatus=active&viewNested=true'
-                                            - '&hideStacks=true&stackId='
-                                            - Fn::ImportValue: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref ApNo, !Ref ApName]]
+                  ExternalEntityLink: !Join
+                                        - '' 
+                                        - - !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloudformation/home?region=${AWS::Region}#/' 
+                                          - 'stacks?filteringText=&filteringStatus=in_progress'
+                                          - '&viewNested=true&hideStacks=true&stackId='
                   CustomData: !Join
                                 - ''
                                 - - 'The latest changeset for '
