@@ -6,12 +6,12 @@ phases:
             nodejs: 10
     build:
         commands:
-            - echo "$CODEBUILD_WEBHOOK_BASE_REF"
             - npm install --prefix ./aws/lambda time
+            - rm -rf ./aws/cloudformation
             - export BUCKET="lab666-scott-codepipeline"
             - export S3_PREFIX="dev-sagemaker/CfnPackage"
             - >
-                aws cloudformation package --template-file template.yml \
+                aws cloudformation package --template-file lambda-template.yml \
                     --s3-bucket $BUCKET --s3-prefix $S3_PREFIX --kms-key-id $CODEBUILD_KMS_KEY_ID \
                     --output-template-file outputtemplate.yml
 artifacts:

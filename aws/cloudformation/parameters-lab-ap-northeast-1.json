@@ -14,5 +14,9 @@
     {
         "ParameterKey": "DeployEnvironment",
         "ParameterValue": "lab"
+    },
+    {
+        "ParameterKey": "ApCustodianEmail",
+        "ParameterValue": "fantasticSie@hotmail.com"
     }
 ]
