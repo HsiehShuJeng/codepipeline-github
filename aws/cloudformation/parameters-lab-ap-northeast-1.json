@@ -1,0 +1,18 @@
+[
+    {
+      "ParameterKey": "ApNo",
+      "ParameterValue": "1234"
+    }, 
+    {
+      "ParameterKey": "ApName",
+      "ParameterValue": "sagemaker"
+    },
+    {
+        "ParameterKey": "GitHubOwner",
+        "ParameterValue": "HsiehShuJeng"
+    },
+    {
+        "ParameterKey": "DeployEnvironment",
+        "ParameterValue": "lab"
+    }
+]

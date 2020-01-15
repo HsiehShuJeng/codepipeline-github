@@ -1,4 +1,43 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Create a CodePipeline pipeline for an application"
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: 'Github'
+        Parameters:
+          - BranchName
+          - RepositoryName
+          - GitHubOwner
+          - GitHubOAuthToken
+          - WebHookNameSuffix
+      -
+        Label:
+          default: 'CodePipeline'
+        Parameters:
+          - CodePipelineNameSuffix
+          - CodePipelineAPPrefix
+      -
+        Label:
+          default: 'CodeBuild'
+        Parameters:
+          - ProjectNameSuffix
+          - ComputeType
+          - CodeBuildAPPrefix
+      -
+        Label:
+          default: 'Application Information'
+        Parameters:
+          - ApName
+          - ApNo
 Parameters:
+  ApNo:
+    Description: application serial number
+    Type: String
+  ApName:
+    Description: application name
+    Type: String
   BranchName:
     Description: GitHub branch name
     Type: String
@@ -9,26 +48,25 @@ Parameters:
     Default: codepipeline-github
   GitHubOwner:
     Type: String
-    Default: HsiehShuJeng
   GitHubOAuthToken:
     Type: String
     Default: "{{resolve:secretsmanager:github/access_token:SecretString:GitHubSecret}}"
+  WebHookNameSuffix:
+    Description: The fixed name of webhook for a specific application
+    Type: String
+    Default: webhook
   ComputeType:
     AllowedValues:
       - BUILD_GENERAL1_SMALL
       - BUILD_GENERAL1_MEDIUM
       - BUILD_GENERAL1_LARGE
     Default: BUILD_GENERAL1_SMALL
-    Description: AWS CodeBuild project compute type.
+    Description: AWS CodeBuild project compute type
     Type: String
-  ApplicationName:
-    Description: CodeDeploy application name
+  CodePipelineNameSuffix:
+    Description: The fixed part in the name of a Codepipeline
     Type: String
-    Default: DemoApplication
-  CodePipelineName:
-    Description: The name of CodePipeline
-    Type: String
-    Default: "dev-sagemaker"
+    Default: "codepipeline"
   CodePipelineAPPrefix:
     Description: directory for AP on AWS S3
     Type: String
@@ -37,76 +75,32 @@ Parameters:
     Description: CodeBuild directory for AP on AWS s3
     Type: String
     Default: 'DevCodeBuild'
-  CfnApStack:
-    Description: Lambda cfn stack
+  ProjectNameSuffix:
+    Description: The fixed part in the name of a CodeBuild project
     Type: String
-    Default: 'dev-314159-sagemaker'
-  RepositoryLocation:
-    AllowedPattern: '^https?://.*$'
-    ConstraintDescription: 'RepositoryLocation must be the HTTPS clone URL to the repository.'
-    Description: 'The repository location, e.g., https://github.com/example/example.git'
+    Default: 'codebuild'
+  DeployEnvironment:
+    Description: 'A designated environment where resources are going to be built.'
+    ConstraintDescription: 'must specify prod or test.'
+    AllowedValues: ['lab', 'prod']
     Type: String
-    Default: 'https://github.com/HsiehShuJeng/codepipeline-github.git'
-  RepositoryType:
-    AllowedValues: 
-      - 'GITHUB'
-    ConstraintDescription: "RepositoryType must be a valid repository type. Allowed values: GITUHB"
-    Description: "The repository type, e.g. GITHUB"
-    Type: String
-    Default: 'GITHUB'
-  ProjectName:
-    Description: CodeBuild project name
-    Type: String
-    Default: dev-sagemaker
-  BetaFleet:
-    Description: Fleet configured in CodeDeploy
-    Type: String
-    Default: DemoFleet
+    Default: lab
+
+Mappings:
+  EnvMap:
+      lab:
+          DeployEnv: lab666
+      prod:
+          DeployEnv: prod666
+
 Resources:
-  # S3 bucket for build artifacts from CodePipeLine
-  CodePipelineArtifactStoreBucket:
-    Type: 'AWS::S3::Bucket'
-    Properties:
-      BucketName: 'devscott-codepipeline'
-  CodePipelineArtifactStoreBucketPolicy:
-    Type: 'AWS::S3::BucketPolicy'
-    Properties:
-      Bucket: !Ref CodePipelineArtifactStoreBucket
-      PolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Sid: DenyUnEncryptedObjectUploads
-            Effect: Deny
-            Principal: '*'
-            Action: 's3:PutObject'
-            Resource: !Join 
-              - ''
-              - - !GetAtt CodePipelineArtifactStoreBucket.Arn
-                - /*
-            Condition:
-              StringNotEquals:
-                's3:x-amz-server-side-encryption': 'aws:kms'
-          - Sid: DenyInsecureConnections
-            Effect: Deny
-            Principal: '*'
-            Action: 's3:*'
-            Resource: !Join 
-              - ''
-              - - !GetAtt CodePipelineArtifactStoreBucket.Arn
-                - /*
-            Condition:
-              Bool:
-                'aws:SecureTransport': false
   AppCodeBuild:
     DependsOn:
       - "CodeBuildServiceRole"
     Type: "AWS::CodeBuild::Project"
-    Metadata:
-      Comment: "https://docs.aws.amazon.com/codebuild/latest/userguide/sample-github-pull-request.html#sample-github-pull-request-filter-webhook-events-cfn"
     Properties:
-      Name: !Ref ProjectName
+      Name: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref 'ApNo', !Ref ProjectNameSuffix]]
       ServiceRole: !Ref CodeBuildServiceRole
-      # specifies output settings for artifacts generated by an AWS CodeBild build
       Artifacts:
         Type: CODEPIPELINE
       Environment:
@@ -115,19 +109,6 @@ Resources:
         Image: aws/codebuild/standard:2.0
       Source:
         Type: CODEPIPELINE
-      # Triggers:
-      #   Webhook: true
-      #   FilterGroups:
-      #     - - Type: EVENT
-      #         Pattern: PUSH
-      #       - Type: BASE_REF
-      #         Pattern: ^refs/heads/master$
-      #         ExcludeMatchedPattern: false
-      #       - Type: HEAD_REF
-      #         Pattern: ^refs/tags/v[0-9]*
-      #       - Type: ACTOR_ACCOUNT_ID
-      #         Pattern: HsiehShuJeng
-      #         ExcludeMatchedPattern: true
 
   ApPipelineWebhook:
     Type: 'AWS::CodePipeline::Webhook'
@@ -140,7 +121,7 @@ Resources:
           MatchEquals: !Sub 'refs/heads/${BranchName}'
       TargetPipeline: !Ref ApPipeline
       TargetAction: SourceAction
-      Name: ApPipelineWebhook
+      Name: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref ApNo, !Ref ApName, !Ref WebHookNameSuffix]]
       TargetPipelineVersion: !GetAtt ApPipeline.Version
       RegisterWithThirdParty: true
 
@@ -149,11 +130,11 @@ Resources:
       - "CodePipelineServiceRole"
     Type: 'AWS::CodePipeline::Pipeline'
     Properties:
-      Name: !Sub "${CodePipelineName}"
+      Name: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref 'ApNo', !Ref CodePipelineNameSuffix]]
       RoleArn: !GetAtt CodePipelineServiceRole.Arn
       ArtifactStore:
         Type: S3
-        Location: !Ref CodePipelineArtifactStoreBucket
+        Location: !ImportValue CodePipelineArtifactStoreBucket
       Stages:
         - Name: Source
           Actions:
@@ -175,7 +156,7 @@ Resources:
               Namespace: SourceVariables
         - Name: BuildResources
           Actions:
-            - Name: GitTagDetect
+            - Name: GitPull
               InputArtifacts:
                 - Name: !Sub "${CodePipelineAPPrefix}"
               ActionTypeId:
@@ -185,7 +166,7 @@ Resources:
                 Provider: CodeBuild
               Configuration:
                 EnvironmentVariables: "[{\"name\":\"Release_ID\",\"value\":\"#{codepipeline.PipelineExecutionId}\",\"type\":\"PLAINTEXT\"},{\"name\":\"Commit_ID\",\"value\":\"#{SourceVariables.CommitId}\",\"type\":\"PLAINTEXT\"}]"
-                ProjectName: !Ref ProjectName
+                ProjectName: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref 'ApNo', !Ref ProjectNameSuffix]]
               OutputArtifacts:
                 - Name: !Sub "${CodeBuildAPPrefix}"
               RunOrder: 1
@@ -202,11 +183,26 @@ Resources:
               Configuration:
                 ActionMode: CHANGE_SET_REPLACE
                 Capabilities: CAPABILITY_IAM
-                ChangeSetName: 'dev-314159-changeset'
+                ChangeSetName: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref ApNo, !Ref ApName, 'changeset']]
                 RoleArn: !GetAtt CodePipelineServiceRole.Arn
-                StackName: !Sub "${CfnApStack}"
+                StackName: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref ApNo, !Ref ApName]]
                 TemplatePath: !Join ['', [!Sub '${CodeBuildAPPrefix}', '::outputtemplate.yml']]
               RunOrder: 1
+            - Name: ApproveChangeSet
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: 1
+              Configuration: 
+                  NotificationArn: !Join ['', [!Sub 'arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:', !Sub '${AWS::StackName}']]
+                  ExternalEntityLink: !Sub 'https://console.aws.amazon.com/cloudformation/home?region=${AWS::Region}'
+                  CustomData: !Join
+                                - ''
+                                - - 'The latest changeset for '
+                                  - !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref ApNo, !Ref ApName]]
+                                  - 'is waiting for being reviewed.'
+              RunOrder: 2
             - Name: ExecuteChangeSet
               ActionTypeId:
                 Category: Deploy
@@ -217,9 +213,9 @@ Resources:
                 - Name: !Sub "${CodeBuildAPPrefix}"
               Configuration:
                 ActionMode: CHANGE_SET_EXECUTE
-                ChangeSetName: 'dev-314159-changeset'
-                StackName: !Sub "${CfnApStack}"
-              RunOrder: 2
+                ChangeSetName: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref ApNo, !Ref ApName, 'changeset']]
+                StackName: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref ApNo, !Ref ApName]]
+              RunOrder: 3
   CodePipelineServiceRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -234,7 +230,9 @@ Resources:
             Action: 'sts:AssumeRole'
       Path: /
       Policies:
-        - PolicyName: 'dev01-start-execution-codepipeline-testapp'
+        - PolicyName: !Join
+                        - '-'
+                        - [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Sub 'start-execution-codepipeline-${ApName}']
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -261,6 +259,10 @@ Resources:
                   - 'lambda:CreateFunction'
                   - 'lambda:DeleteFunction'
                   - 'lambda:GetFunctionConfiguration'
+                  - 'lambda:UpdateFunctionCode'
+                  - 'lambda:ListTags'
+                  - 'lambda:TagResource'
+                  - 'lambda:UntagResource'
                 Resource: '*'
               - Effect: Allow
                 Action:
@@ -300,7 +302,7 @@ Resources:
               Service:
                 - codebuild.amazonaws.com
       Policies:
-        - PolicyName: !Sub 'DevCodebuild${ApplicationName}'
+        - PolicyName: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref ApNo]]
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -318,20 +320,24 @@ Resources:
                 - 's3:PutObject'
                 - 's3:PutObjectAcl'
               Resource:
-                - !Join ['', ['arn:aws:s3:::', !Ref CodePipelineArtifactStoreBucket, '/*']]
+                - !Join ['', ['arn:aws:s3:::', !ImportValue CodePipelineArtifactStoreBucket, '/*']]
 Outputs:
   ApPipelineName:
     Description: The name of the CodePipeline
     Value: !Ref ApPipeline
-  ApPipelineArtifactStore:
-    Description: The ARN of the CodePipeline
-    Value: !Join ['', [!Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:', !Ref ApPipeline]]
-  CodePipelineArtifactStoreBucket:
-    Description: S3 bucket where artificats are placed
-    Value: !Ref CodePipelineArtifactStoreBucket
-  CodePipelineAPPrefix:
-    Description: The name of input artifact
-    Value: !Sub "${CodePipelineAPPrefix}"
+  ApWebHookName:
+    Description: The name of the webhook for this AP
+    Value: !Ref ApPipelineWebhook
+  CodePipelineStackName:
+    Description: The name of the CodePipeline for the AP
+    Value: !Sub '${AWS::StackName}'
+  CodePipelineName:
+    Value: !Ref ApPipeline
+  CodePipelineVersion:
+    Value: !GetAtt ApPipeline.Version
   CodeBuildAPPrefix:
     Description: The name of artifact name for CodeBuild
     Value: !Sub "${CodeBuildAPPrefix}"
+  ApStackName:
+    Description: The name of the stack for AP
+    Value: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref ApNo, !Ref ApName]]
