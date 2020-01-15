@@ -6,8 +6,9 @@ phases:
             nodejs: 10
     build:
         commands:
+            - echo "$CODEBUILD_WEBHOOK_BASE_REF"
             - npm install --prefix ./aws/lambda time
-            - export BUCKET="devscott-codepipeline"
+            - export BUCKET="lab666-scott-codepipeline"
             - export S3_PREFIX="dev-sagemaker/CfnPackage"
             - >
                 aws cloudformation package --template-file template.yml \

@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: "Create a S3 bucket with versioning"
+
+Parameters:
+    DeployEnvironment:
+        Description: 'A designated environment where resources are going to be built.'
+        ConstraintDescription: 'must specify prod or test.'
+        AllowedValues: ['lab', 'prod']
+        Type: String
+        Default: lab
+        
+Mappings:
+    EnvMap:
+        lab:
+            DeployEnv: lab666
+        prod:
+            DeployEnv: prod666
+Resources:
+    CodePipelineArtifactStoreBucket:
+      Type: 'AWS::S3::Bucket'
+      Properties:
+        BucketName: !Join 
+                        - ''
+                        - [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], '-scott-codepipeline']
+        Tags:
+            -
+                Key: Type
+                Value: CodePipeline
+            -
+                Key: Creator
+                Value: 'scott.hsieh'
+        VersioningConfiguration:
+            Status: Enabled
+    CodePipelineArtifactStoreBucketPolicy:
+      Type: 'AWS::S3::BucketPolicy'
+      Properties:
+        Bucket: !Ref CodePipelineArtifactStoreBucket
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Sid: DenyUnEncryptedObjectUploads
+              Effect: Deny
+              Principal: '*'
+              Action: 's3:PutObject'
+              Resource: !Join
+                - ''
+                - - !GetAtt CodePipelineArtifactStoreBucket.Arn
+                  - /*
+              Condition:
+                StringNotEquals:
+                  's3:x-amz-server-side-encryption': 'aws:kms'
+            - Sid: DenyInsecureConnections
+              Effect: Deny
+              Principal: '*'
+              Action: 's3:*'
+              Resource: !Join
+                - ''
+                - - !GetAtt CodePipelineArtifactStoreBucket.Arn
+                  - /*
+              Condition:
+                Bool:
+                  'aws:SecureTransport': false
+
+Outputs:
+    CodePipelineArtifactStoreBucket:
+        Description: The place where artifacts are placed by CodePipeline
+        Value: !Ref CodePipelineArtifactStoreBucket
+        Export:
+            Name: 'CodePipelineArtifactStoreBucket'
+    CodePipelineArtifactStoreBucketARN:
+        Description: The ARN of the bucket
+        Value: !GetAtt CodePipelineArtifactStoreBucket.Arn
+    DeployEnvironment:
+        Description: The environment where this bucket locates
+        Value: !Ref DeployEnvironment
+        Export:
+            Name: !Sub '${AWS::StackName}-DeployEnvironment'
