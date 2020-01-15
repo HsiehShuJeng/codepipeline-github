@@ -31,12 +31,16 @@ Metadata:
         Parameters:
           - ApName
           - ApNo
+          - ApCustodianEmail
 Parameters:
   ApNo:
     Description: application serial number
     Type: String
   ApName:
     Description: application name
+    Type: String
+  ApCustodianEmail:
+    Description: email address
     Type: String
   BranchName:
     Description: GitHub branch name
@@ -94,6 +98,20 @@ Mappings:
           DeployEnv: prod666
 
 Resources:
+  LambdaSnsTopic:
+    Type: AWS::SNS::Topic
+    Properties: 
+      DisplayName: !Sub 'Change Set of CloudFormation Stack for ${ApNo}'
+      Subscription:
+        - 
+          Endpoint: !Sub '${ApCustodianEmail}'
+          Protocol: email
+      Tags: 
+        - 
+          Key: 'ApNo'
+          Value: !Sub '${ApNo}'
+      TopicName: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], 'CodePipeline', 'Cfn', 'ChangeSet']]
+
   AppCodeBuild:
     DependsOn:
       - "CodeBuildServiceRole"
@@ -101,13 +119,16 @@ Resources:
     Properties:
       Name: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref 'ApNo', !Ref ProjectNameSuffix]]
       ServiceRole: !Ref CodeBuildServiceRole
+      # Cache: LOCAL
       Artifacts:
         Type: CODEPIPELINE
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: !Ref ComputeType
         Image: aws/codebuild/standard:2.0
+      QueuedTimeoutInMinutes: 540 # 15 mins
       Source:
+        BuildSpec: buildspec.yml
         Type: CODEPIPELINE
 
   ApPipelineWebhook:
@@ -127,7 +148,8 @@ Resources:
 
   ApPipeline:
     DependsOn:
-      - "CodePipelineServiceRole"
+      - 'CodePipelineServiceRole'
+      - 'LambdaSnsTopic'
     Type: 'AWS::CodePipeline::Pipeline'
     Properties:
       Name: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref 'ApNo', !Ref CodePipelineNameSuffix]]
@@ -170,6 +192,7 @@ Resources:
               OutputArtifacts:
                 - Name: !Sub "${CodeBuildAPPrefix}"
               RunOrder: 1
+              Namespace: BuildVariables
         - Name: Deploy
           Actions:
             - Name: ChangeSet
@@ -188,15 +211,22 @@ Resources:
                 StackName: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref ApNo, !Ref ApName]]
                 TemplatePath: !Join ['', [!Sub '${CodeBuildAPPrefix}', '::outputtemplate.yml']]
               RunOrder: 1
+              Namespace: ChangeSetVariables
             - Name: ApproveChangeSet
               ActionTypeId:
                 Category: Approval
                 Owner: AWS
                 Provider: Manual
                 Version: 1
-              Configuration: 
-                  NotificationArn: !Join ['', [!Sub 'arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:', !Sub '${AWS::StackName}']]
-                  ExternalEntityLink: !Sub 'https://console.aws.amazon.com/cloudformation/home?region=${AWS::Region}'
+              Configuration:
+                  NotificationArn: !Ref LambdaSnsTopic
+                  ExternalEntityLink: !Join 
+                                          - '' 
+                                          - - !Sub 'https://console.aws.amazon.com/cloudformation/home?region=${AWS::Region}#'
+                                            - '/stacks/stackinfo?filteringText='
+                                            - '&filteringStatus=active&viewNested=true'
+                                            - '&hideStacks=true&stackId='
+                                            - Fn::ImportValue: !Join ['-', [!FindInMap [EnvMap, !Ref DeployEnvironment, DeployEnv], !Ref ApNo, !Ref ApName]]
                   CustomData: !Join
                                 - ''
                                 - - 'The latest changeset for '
@@ -290,7 +320,6 @@ Resources:
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
     Properties:
-      # the purpose of Path?
       Path: /
       Description: !Sub "Used in CodeBuild project. Created by CloudFormation ${AWS::StackId}"
       AssumeRolePolicyDocument:

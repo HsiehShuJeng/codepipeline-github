@@ -14,3 +14,9 @@ Resources:
           Properties:
             Path: /TimeResource
             Method: GET
+Outputs:
+  LambdaCfnStackName:
+    Description: The cfn stack name of the lambda
+    Value: !Sub '${AWS::StackName}'
+    Export:
+      Name: !Sub '${AWS::StackName}'
