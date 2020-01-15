@@ -7,4 +7,3 @@ exports.handler = (event, context, callback) => {
         body: 'The time in Taipei is: ' + currentTime.toString(),
     });
 };
-// add comment
