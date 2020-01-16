@@ -6,6 +6,7 @@ phases:
             nodejs: 10
     build:
         commands:
+            - echo "ApNo:${ApNo}"
             - npm install --prefix ./aws/lambda time
             - rm -rf ./aws/cloudformation
             - export BUCKET="lab666-scott-codepipeline"
