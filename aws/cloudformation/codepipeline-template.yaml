@@ -126,6 +126,10 @@ Resources:
         Type: LINUX_CONTAINER
         ComputeType: !Ref ComputeType
         Image: aws/codebuild/standard:2.0
+        EnvironmentVariables:
+          -
+            Name: ApNo
+            Value: !Sub '${ApNo}'
       QueuedTimeoutInMinutes: 15 # mins
       Source:
         BuildSpec: buildspec.yml
